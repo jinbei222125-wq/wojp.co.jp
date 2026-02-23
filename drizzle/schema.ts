@@ -29,14 +29,18 @@ export type InsertUser = typeof users.$inferInsert;
  * NEWS table for company announcements
  * - slug: URL-friendly identifier for public access
  * - isPublished: Controls visibility on the public site
+ *
+ * NOTE: This schema matches the actual Turso DB columns.
+ * The DB uses excerpt/thumbnailUrl/authorId instead of category/imageUrl.
  */
 export const news = sqliteTable("news", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(), // URL-friendly identifier
   title: text("title").notNull(),
   content: text("content").notNull(), // Markdown content
-  category: text("category", { enum: ["お知らせ", "重要なお知らせ", "プレスリリース", "メディア掲載"] }).notNull(),
-  imageUrl: text("imageUrl"),
+  excerpt: text("excerpt"), // 記事の概要
+  thumbnailUrl: text("thumbnailUrl"), // サムネイル画像URL
+  authorId: integer("authorId"), // 投稿者ID
   isPublished: integer("isPublished", { mode: "boolean" }).notNull().default(false), // false = draft, true = published
   publishedAt: integer("publishedAt", { mode: "timestamp" }),
   createdAt: integer("createdAt", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),

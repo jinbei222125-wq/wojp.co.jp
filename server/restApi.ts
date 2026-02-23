@@ -226,18 +226,10 @@ export function setupRestApi(app: express.Application) {
 
       const limit = parseInt(req.query.limit as string) || 100;
       const page = parseInt(req.query.page as string) || 1;
-      const category = req.query.category as string;
-
-      let allNews;
-      if (category) {
-        allNews = await db.select().from(news)
-          .where(and(eq(news.isPublished, true), eq(news.category, category as any)))
-          .orderBy(desc(news.publishedAt));
-      } else {
-        allNews = await db.select().from(news)
-          .where(eq(news.isPublished, true))
-          .orderBy(desc(news.publishedAt));
-      }
+      // NOTE: DB does not have a category column; category filter is not supported
+      const allNews = await db.select().from(news)
+        .where(eq(news.isPublished, true))
+        .orderBy(desc(news.publishedAt));
       const total = allNews.length;
       const startIndex = (page - 1) * limit;
       const endIndex = startIndex + limit;
@@ -248,10 +240,10 @@ export function setupRestApi(app: express.Application) {
         id: item.id,
         title: item.title,
         slug: item.slug,
-        eyecatch_image_url: item.imageUrl || null,
-        category: item.category,
+        eyecatch_image_url: item.thumbnailUrl || null,
+        category: null,
         published_at: item.publishedAt ? item.publishedAt.toISOString() : null,
-        excerpt: item.content?.substring(0, 200) || undefined,
+        excerpt: item.excerpt || item.content?.substring(0, 200) || undefined,
       }));
 
       return res.json({
@@ -301,10 +293,10 @@ export function setupRestApi(app: express.Application) {
         title: newsItem.title,
         slug: newsItem.slug,
         body: newsItem.content,
-        eyecatch_image_url: newsItem.imageUrl || null,
-        category: newsItem.category,
+        eyecatch_image_url: newsItem.thumbnailUrl || null,
+        category: null,
         published_at: newsItem.publishedAt ? newsItem.publishedAt.toISOString() : null,
-        excerpt: newsItem.content?.substring(0, 200) || undefined,
+        excerpt: newsItem.excerpt || newsItem.content?.substring(0, 200) || undefined,
       });
     } catch (error) {
       console.error("[Public API] Get news detail error:", error);
@@ -422,8 +414,8 @@ export function setupRestApi(app: express.Application) {
         title: item.title,
         slug: item.slug,
         body: item.content,
-        eyecatch_image_url: item.imageUrl || null,
-        category: item.category,
+        eyecatch_image_url: item.thumbnailUrl || null,
+        category: null,
         is_published: !!item.isPublished,
         published_at: item.publishedAt ? item.publishedAt.toISOString() : null,
         created_by: null,

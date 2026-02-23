@@ -38,8 +38,12 @@ var news = sqliteTable("news", {
   title: text("title").notNull(),
   content: text("content").notNull(),
   // Markdown content
-  category: text("category", { enum: ["\u304A\u77E5\u3089\u305B", "\u91CD\u8981\u306A\u304A\u77E5\u3089\u305B", "\u30D7\u30EC\u30B9\u30EA\u30EA\u30FC\u30B9", "\u30E1\u30C7\u30A3\u30A2\u63B2\u8F09"] }).notNull(),
-  imageUrl: text("imageUrl"),
+  excerpt: text("excerpt"),
+  // 記事の概要
+  thumbnailUrl: text("thumbnailUrl"),
+  // サムネイル画像URL
+  authorId: integer("authorId"),
+  // 投稿者ID
   isPublished: integer("isPublished", { mode: "boolean" }).notNull().default(false),
   // false = draft, true = published
   publishedAt: integer("publishedAt", { mode: "timestamp" }),
@@ -886,13 +890,7 @@ function setupRestApi(app2) {
       }
       const limit = parseInt(req.query.limit) || 100;
       const page = parseInt(req.query.page) || 1;
-      const category = req.query.category;
-      let allNews;
-      if (category) {
-        allNews = await db.select().from(news).where(and2(eq2(news.isPublished, true), eq2(news.category, category))).orderBy(desc2(news.publishedAt));
-      } else {
-        allNews = await db.select().from(news).where(eq2(news.isPublished, true)).orderBy(desc2(news.publishedAt));
-      }
+      const allNews = await db.select().from(news).where(eq2(news.isPublished, true)).orderBy(desc2(news.publishedAt));
       const total = allNews.length;
       const startIndex = (page - 1) * limit;
       const endIndex = startIndex + limit;
@@ -901,10 +899,10 @@ function setupRestApi(app2) {
         id: item.id,
         title: item.title,
         slug: item.slug,
-        eyecatch_image_url: item.imageUrl || null,
-        category: item.category,
+        eyecatch_image_url: item.thumbnailUrl || null,
+        category: null,
         published_at: item.publishedAt ? item.publishedAt.toISOString() : null,
-        excerpt: item.content?.substring(0, 200) || void 0
+        excerpt: item.excerpt || item.content?.substring(0, 200) || void 0
       }));
       return res.json({
         data: transformedNews,
@@ -944,10 +942,10 @@ function setupRestApi(app2) {
         title: newsItem.title,
         slug: newsItem.slug,
         body: newsItem.content,
-        eyecatch_image_url: newsItem.imageUrl || null,
-        category: newsItem.category,
+        eyecatch_image_url: newsItem.thumbnailUrl || null,
+        category: null,
         published_at: newsItem.publishedAt ? newsItem.publishedAt.toISOString() : null,
-        excerpt: newsItem.content?.substring(0, 200) || void 0
+        excerpt: newsItem.excerpt || newsItem.content?.substring(0, 200) || void 0
       });
     } catch (error) {
       console.error("[Public API] Get news detail error:", error);
@@ -1041,8 +1039,8 @@ function setupRestApi(app2) {
         title: item.title,
         slug: item.slug,
         body: item.content,
-        eyecatch_image_url: item.imageUrl || null,
-        category: item.category,
+        eyecatch_image_url: item.thumbnailUrl || null,
+        category: null,
         is_published: !!item.isPublished,
         published_at: item.publishedAt ? item.publishedAt.toISOString() : null,
         created_by: null,
