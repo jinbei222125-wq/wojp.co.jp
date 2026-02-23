@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1768662266014,
+      "tag": "0000_red_ricochet",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1768662312911,
+      "tag": "0001_equal_sharon_ventura",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1768760678517,
+      "tag": "0002_ambiguous_whirlwind",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1768761831168,
+      "tag": "0003_magenta_psynapse",
+      "breakpoints": true
+    }
+  ]
+}
