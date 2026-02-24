@@ -135,6 +135,13 @@ export default function NewsDetail() {
               <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight">
                 {news.title}
               </h1>
+
+              {/* 抜粋 */}
+              {news.excerpt && (
+                <p className="mt-6 text-lg text-gray-300 leading-relaxed max-w-3xl border-l-4 border-brass/60 pl-5">
+                  {news.excerpt}
+                </p>
+              )}
             </motion.div>
           </div>
         </section>
