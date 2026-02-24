@@ -56,7 +56,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -87,7 +88,7 @@ export async function getPublishedNews() {
   const db = await getDb();
   if (!db) return [];
   return await db.select().from(news)
-    .where(eq(news.isPublished, 1))
+    .where(eq(news.isPublished, true))
     .orderBy(desc(news.publishedAt));
 }
 
@@ -99,7 +100,7 @@ export async function getNewsBySlug(slug: string) {
   const db = await getDb();
   if (!db) return undefined;
   const result = await db.select().from(news)
-    .where(and(eq(news.slug, slug), eq(news.isPublished, 1)))
+    .where(and(eq(news.slug, slug), eq(news.isPublished, true)))
     .limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
@@ -114,6 +115,6 @@ export async function getActiveJobPositions() {
   const db = await getDb();
   if (!db) return [];
   return await db.select().from(jobPositions)
-    .where(and(eq(jobPositions.isPublished, 1), eq(jobPositions.isActive, 1)))
+    .where(and(eq(jobPositions.isPublished, true), eq(jobPositions.isActive, true)))
     .orderBy(desc(jobPositions.createdAt));
 }

@@ -6,7 +6,8 @@
 import { useParams, Link } from "wouter";
 import { motion } from "framer-motion";
 import { Calendar, Tag, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
-import { Streamdown } from "streamdown";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { publicApi, NewsPublicItem } from "@/lib/api";
@@ -189,7 +190,7 @@ export default function NewsDetail() {
                 prose-hr:border-border prose-hr:my-10
                 prose-a:text-brass prose-a:no-underline hover:prose-a:underline
               ">
-                <Streamdown>{news.body}</Streamdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{news.body}</ReactMarkdown>
               </div>
             </motion.article>
           </div>
