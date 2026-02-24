@@ -333,7 +333,12 @@ function JobsSection() {
                         )}
                       </div>
 
-                      <p className="text-muted-foreground mb-4">{job.description}</p>
+                      <div
+                        className="prose prose-sm max-w-none text-muted-foreground mb-4
+                          prose-headings:text-foreground prose-strong:text-foreground
+                          prose-ul:my-2 prose-li:my-0 prose-p:my-2"
+                        dangerouslySetInnerHTML={{ __html: job.description }}
+                      />
 
                       <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-4">
                         <span>勤務地：{job.location}</span>
@@ -341,13 +346,12 @@ function JobsSection() {
                       </div>
 
                       {job.requirements && job.requirements.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {job.requirements.split(/[、,]/).map((req: string, i: number) => (
-                            <span key={i} className="px-3 py-1 bg-muted text-muted-foreground text-sm">
-                              {req.trim()}
-                            </span>
-                          ))}
-                        </div>
+                        <div
+                          className="prose prose-sm max-w-none text-muted-foreground
+                            prose-headings:text-foreground prose-strong:text-foreground
+                            prose-ul:my-2 prose-li:my-0 prose-p:my-2"
+                          dangerouslySetInnerHTML={{ __html: job.requirements }}
+                        />
                       )}
                     </div>
 

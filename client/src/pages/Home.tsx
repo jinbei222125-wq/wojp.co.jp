@@ -579,7 +579,7 @@ function NewsProfileSection() {
                         {item.publishedAt ? formatDate(new Date(item.publishedAt)) : "-"}
                       </span>
                       <span className="text-brass text-xs font-display tracking-wider px-2 py-1 bg-brass/10 text-center">
-                        {item.category}
+                        {(item as any).category ?? "NEWS"}
                       </span>
                       <span className="text-foreground text-sm line-clamp-1">{item.title}</span>
                     </div>
