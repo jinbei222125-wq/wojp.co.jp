@@ -6,7 +6,7 @@
 import { useParams, Link } from "wouter";
 import { motion } from "framer-motion";
 import { Calendar, Tag, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
-// Tiptap WYSIWYGエディタ出力（HTML）をそのままレンダリング
+import RichContent from "@/components/RichContent";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { publicApi, NewsPublicItem } from "@/lib/api";
@@ -189,7 +189,7 @@ export default function NewsDetail() {
                 prose-hr:border-border prose-hr:my-10
                 prose-a:text-brass prose-a:no-underline hover:prose-a:underline
               ">
-                <div dangerouslySetInnerHTML={{ __html: news.body }} />
+                <RichContent content={news.body} />
               </div>
             </motion.article>
           </div>

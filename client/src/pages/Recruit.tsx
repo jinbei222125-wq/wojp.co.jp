@@ -16,6 +16,7 @@ import { ArrowRight, Heart, Zap, Target, Shield, TrendingUp, Briefcase, Users, C
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { publicApi, JobItem } from "@/lib/api";
+import RichContent from "@/components/RichContent";
 
 // ページヒーロー
 function PageHero() {
@@ -333,11 +334,11 @@ function JobsSection() {
                         )}
                       </div>
 
-                      <div
+                      <RichContent
+                        content={job.description}
                         className="prose prose-sm max-w-none text-muted-foreground mb-4
                           prose-headings:text-foreground prose-strong:text-foreground
                           prose-ul:my-2 prose-li:my-0 prose-p:my-2"
-                        dangerouslySetInnerHTML={{ __html: job.description }}
                       />
 
                       <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-4">
@@ -346,11 +347,11 @@ function JobsSection() {
                       </div>
 
                       {job.requirements && job.requirements.length > 0 && (
-                        <div
+                        <RichContent
+                          content={job.requirements}
                           className="prose prose-sm max-w-none text-muted-foreground
                             prose-headings:text-foreground prose-strong:text-foreground
                             prose-ul:my-2 prose-li:my-0 prose-p:my-2"
-                          dangerouslySetInnerHTML={{ __html: job.requirements }}
                         />
                       )}
                     </div>
