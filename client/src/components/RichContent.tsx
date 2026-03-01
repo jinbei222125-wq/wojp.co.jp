@@ -5,13 +5,11 @@
  *
  * 対応パターン:
  *   1. 正常な HTML（Tiptap が正しく出力した場合）→ Markdown記法を前処理してから dangerouslySetInnerHTML
- *   2. <pre><code>Markdown</code></pre> のみ → Markdown として react-markdown でレンダリング
- *   3. <p># 見出し</p> のように <p> 内に行頭 Markdown 記法がある → htmlToMarkdown で変換して react-markdown
- *   4. プレーンな Markdown テキスト → react-markdown でレンダリング
+ *   2. <pre><code>Markdown</code></pre> のみ → Markdown → HTML 変換して dangerouslySetInnerHTML
+ *   3. <p># 見出し</p> のように <p> 内に行頭 Markdown 記法がある → htmlToMarkdown → markdownToHtml
+ *   4. プレーンな Markdown テキスト → markdownToHtml
  */
 
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import DOMPurify from "dompurify";
 
 interface RichContentProps {
@@ -55,7 +53,6 @@ function extractMarkdownFromPreCode(text: string): string | null {
 /**
  * HTML の <p> タグ内に行頭 Markdown 記法が含まれているか判定
  * 例: <p># 見出し</p>, <p>## 見出し2</p>, <p>---</p>
- * ※ 段落途中の **太字** は別途 preprocessHtml で処理するため、ここでは行頭のみ判定
  */
 function hasLineStartMarkdownInParagraphs(text: string): boolean {
   const pContents = text.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) || [];
@@ -71,26 +68,6 @@ function hasLineStartMarkdownInParagraphs(text: string): boolean {
   return pContents.some((pTag) => {
     const inner = pTag.replace(/<[^>]+>/g, "").trim();
     return lineStartPatterns.some((p) => p.test(inner));
-  });
-}
-
-/**
- * HTML を前処理して、<p> タグ内の Markdown 記法（**太字**, *斜体*）を
- * HTML タグ（<strong>, <em>）に変換する
- */
-function preprocessHtml(html: string): string {
-  // <p> タグの内容を処理
-  return html.replace(/<p([^>]*)>([\s\S]*?)<\/p>/gi, (_match, attrs, inner) => {
-    // <p> 内のテキストノード部分の Markdown 記法を HTML に変換
-    let processed = inner;
-
-    // **太字** → <strong>太字</strong>
-    processed = processed.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
-
-    // *斜体* → <em>斜体</em> （**太字** の変換後に実行）
-    processed = processed.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "<em>$1</em>");
-
-    return `<p${attrs}>${processed}</p>`;
   });
 }
 
@@ -127,53 +104,203 @@ function htmlToMarkdown(html: string): string {
   return text.trim();
 }
 
+/**
+ * Markdown テキストを HTML に変換
+ * react-markdown を使わず、正規表現で変換する
+ */
+function markdownToHtml(markdown: string): string {
+  const lines = markdown.split("\n");
+  const htmlLines: string[] = [];
+  let i = 0;
+  let inList = false;
+  let listType = "";
+  let inCodeBlock = false;
+  let codeBlockLines: string[] = [];
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // コードブロック
+    if (line.trim() === "```") {
+      if (inCodeBlock) {
+        htmlLines.push("<pre><code>" + codeBlockLines.join("\n") + "</code></pre>");
+        codeBlockLines = [];
+        inCodeBlock = false;
+      } else {
+        inCodeBlock = true;
+      }
+      i++;
+      continue;
+    }
+
+    if (inCodeBlock) {
+      codeBlockLines.push(escapeHtml(line));
+      i++;
+      continue;
+    }
+
+    // リストの終了
+    if (inList && !line.match(/^(\*|-|\d+\.)\s/)) {
+      htmlLines.push(listType === "ul" ? "</ul>" : "</ol>");
+      inList = false;
+    }
+
+    // 空行
+    if (line.trim() === "") {
+      i++;
+      continue;
+    }
+
+    // 水平線
+    if (line.match(/^---+$/)) {
+      htmlLines.push("<hr>");
+      i++;
+      continue;
+    }
+
+    // 見出し
+    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+    if (headingMatch) {
+      const level = headingMatch[1].length;
+      const text = processInlineMarkdown(headingMatch[2]);
+      htmlLines.push(`<h${level}>${text}</h${level}>`);
+      i++;
+      continue;
+    }
+
+    // 箇条書き（* または -）
+    const ulMatch = line.match(/^[*-]\s+(.+)$/);
+    if (ulMatch) {
+      if (!inList || listType !== "ul") {
+        if (inList) htmlLines.push(listType === "ul" ? "</ul>" : "</ol>");
+        htmlLines.push("<ul>");
+        inList = true;
+        listType = "ul";
+      }
+      htmlLines.push(`<li>${processInlineMarkdown(ulMatch[1])}</li>`);
+      i++;
+      continue;
+    }
+
+    // 番号付きリスト
+    const olMatch = line.match(/^\d+\.\s+(.+)$/);
+    if (olMatch) {
+      if (!inList || listType !== "ol") {
+        if (inList) htmlLines.push(listType === "ul" ? "</ul>" : "</ol>");
+        htmlLines.push("<ol>");
+        inList = true;
+        listType = "ol";
+      }
+      htmlLines.push(`<li>${processInlineMarkdown(olMatch[1])}</li>`);
+      i++;
+      continue;
+    }
+
+    // 引用
+    const blockquoteMatch = line.match(/^>\s+(.+)$/);
+    if (blockquoteMatch) {
+      htmlLines.push(`<blockquote><p>${processInlineMarkdown(blockquoteMatch[1])}</p></blockquote>`);
+      i++;
+      continue;
+    }
+
+    // 通常の段落
+    htmlLines.push(`<p>${processInlineMarkdown(line)}</p>`);
+    i++;
+  }
+
+  // リストが閉じられていない場合
+  if (inList) {
+    htmlLines.push(listType === "ul" ? "</ul>" : "</ol>");
+  }
+
+  return htmlLines.join("\n");
+}
+
+/**
+ * HTML エスケープ
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * インライン Markdown 記法を HTML に変換
+ * **太字**, *斜体*, `コード`, [リンク](url) を処理
+ */
+function processInlineMarkdown(text: string): string {
+  let result = text;
+
+  // **太字** → <strong>太字</strong>
+  result = result.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+
+  // *斜体* → <em>斜体</em> （**太字** の変換後に実行）
+  result = result.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "<em>$1</em>");
+
+  // `コード` → <code>コード</code>
+  result = result.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+
+  // [テキスト](url) → <a href="url">テキスト</a>
+  result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
+  return result;
+}
+
+/**
+ * HTML を前処理して、<p> タグ内の Markdown 記法（**太字**, *斜体*）を
+ * HTML タグ（<strong>, <em>）に変換する
+ */
+function preprocessHtml(html: string): string {
+  // <p> タグの内容を処理
+  return html.replace(/<p([^>]*)>([\s\S]*?)<\/p>/gi, (_match, attrs, inner) => {
+    let processed = inner;
+
+    // **太字** → <strong>太字</strong>
+    processed = processed.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+
+    // *斜体* → <em>斜体</em> （**太字** の変換後に実行）
+    processed = processed.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "<em>$1</em>");
+
+    return `<p${attrs}>${processed}</p>`;
+  });
+}
+
 export default function RichContent({ content, className }: RichContentProps) {
   if (!content) return null;
+
+  let html = "";
 
   // パターン2: <pre><code>Markdown</code></pre> のみの場合
   const markdownFromPreCode = extractMarkdownFromPreCode(content);
   if (markdownFromPreCode !== null) {
-    return (
-      <div className={className}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {markdownFromPreCode}
-        </ReactMarkdown>
-      </div>
-    );
+    html = markdownToHtml(markdownFromPreCode);
   }
-
   // パターン3: HTML の <p> 内に行頭 Markdown 記法（見出し、水平線など）が混在している場合
-  // → HTML タグを除去して Markdown テキストとして react-markdown でレンダリング
-  if (isHtml(content) && hasLineStartMarkdownInParagraphs(content)) {
+  // → HTML タグを除去して Markdown テキストとして markdownToHtml でレンダリング
+  else if (isHtml(content) && hasLineStartMarkdownInParagraphs(content)) {
     const markdown = htmlToMarkdown(content);
-    return (
-      <div className={className}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {markdown}
-        </ReactMarkdown>
-      </div>
-    );
+    html = markdownToHtml(markdown);
   }
-
   // パターン1: 正常な HTML（Tiptap 出力）
   // → **太字** などの Markdown 記法を前処理で HTML に変換してからレンダリング
-  if (isHtml(content)) {
-    const preprocessed = preprocessHtml(content);
-    const clean = DOMPurify.sanitize(preprocessed, { USE_PROFILES: { html: true } });
-    return (
-      <div
-        className={className}
-        dangerouslySetInnerHTML={{ __html: clean }}
-      />
-    );
+  else if (isHtml(content)) {
+    html = preprocessHtml(content);
+  }
+  // パターン4: プレーンな Markdown テキスト
+  else {
+    html = markdownToHtml(content);
   }
 
-  // パターン4: プレーンな Markdown テキスト
+  const clean = DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+
   return (
-    <div className={className}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-        {content}
-      </ReactMarkdown>
-    </div>
+    <div
+      className={className}
+      dangerouslySetInnerHTML={{ __html: clean }}
+    />
   );
 }
