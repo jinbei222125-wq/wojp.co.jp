@@ -54,28 +54,40 @@ function isHtml(text: string): boolean {
 }
 
 /**
- * HTML の <p> タグ内に Markdown 記法が含まれているか判定
- * 例: <p># 見出し</p>, <p>**太字**</p>, <p>---</p>
+ * HTML の中に Markdown 記法が含まれているか判定
+ * - <p> タグ内の行頭 Markdown（# 見出し, --- など）
+ * - <p> タグ内の任意位置の Markdown（**太字**, *斜体* など）
  */
-function hasMarkdownInParagraphs(text: string): boolean {
+function hasMarkdownInHtml(text: string): boolean {
   // <p> タグの内容を抽出
   const pContents = text.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) || [];
-  const markdownPatterns = [
-    /^#{1,6}\s/,          // 見出し: # ## ###
-    /^\*\*[\s\S]+\*\*/,   // 太字: **text**
-    /^---+$/,             // 水平線: ---
-    /^\* /,               // 箇条書き: * item
-    /^- /,                // 箇条書き: - item
-    /^\d+\. /,            // 番号付きリスト: 1. item
-    /^> /,                // 引用: > text
-    /^## /,               // 見出し2
-  ];
 
-  return pContents.some((pTag) => {
+  for (const pTag of pContents) {
     // <p> タグ内のテキストを取得（HTMLタグを除去）
     const inner = pTag.replace(/<[^>]+>/g, "").trim();
-    return markdownPatterns.some((pattern) => pattern.test(inner));
-  });
+    if (!inner) continue;
+
+    // 行頭 Markdown パターン
+    const lineStartPatterns = [
+      /^#{1,6}\s/,     // 見出し: # ## ###
+      /^---+$/,        // 水平線: ---
+      /^\* /,          // 箇条書き: * item
+      /^- /,           // 箇条書き: - item
+      /^\d+\. /,       // 番号付きリスト: 1. item
+      /^> /,           // 引用: > text
+    ];
+
+    // 任意位置 Markdown パターン（段落の途中にある場合）
+    const inlinePatterns = [
+      /\*\*[^*]+\*\*/,  // 太字: **text**
+      /\*[^*]+\*/,      // 斜体: *text*
+    ];
+
+    if (lineStartPatterns.some((p) => p.test(inner))) return true;
+    if (inlinePatterns.some((p) => p.test(inner))) return true;
+  }
+
+  return false;
 }
 
 /**
@@ -126,8 +138,8 @@ export default function RichContent({ content, className }: RichContentProps) {
     );
   }
 
-  // パターン3: HTML の <p> 内に Markdown 記法が混在している場合
-  if (isHtml(content) && hasMarkdownInParagraphs(content)) {
+  // パターン3: HTML の中に Markdown 記法が混在している場合
+  if (isHtml(content) && hasMarkdownInHtml(content)) {
     // HTML タグを除去して Markdown テキストとして取得
     const markdown = htmlToMarkdown(content);
     return (
