@@ -42,6 +42,8 @@ var news = sqliteTable("news", {
   // 記事の概要
   thumbnailUrl: text("thumbnailUrl"),
   // サムネイル画像URL
+  category: text("category").default("\u304A\u77E5\u3089\u305B"),
+  // カテゴリ
   authorId: integer("authorId"),
   // 投稿者ID
   isPublished: integer("isPublished", { mode: "boolean" }).notNull().default(false),

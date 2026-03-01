@@ -240,7 +240,7 @@ export function setupRestApi(app: express.Application) {
         title: item.title,
         slug: item.slug,
         eyecatch_image_url: item.thumbnailUrl || null,
-        category: (item as any).category || "お知らせ",
+        category: item.category || "お知らせ",
         published_at: item.publishedAt ? item.publishedAt.toISOString() : null,
         excerpt: item.excerpt || item.content?.substring(0, 200) || undefined,
       }));
@@ -293,7 +293,7 @@ export function setupRestApi(app: express.Application) {
         slug: newsItem.slug,
         body: newsItem.content,
         eyecatch_image_url: newsItem.thumbnailUrl || null,
-        category: (newsItem as any).category || "お知らせ",
+        category: newsItem.category || "お知らせ",
         published_at: newsItem.publishedAt ? newsItem.publishedAt.toISOString() : null,
         excerpt: newsItem.excerpt || newsItem.content?.substring(0, 200) || undefined,
       });

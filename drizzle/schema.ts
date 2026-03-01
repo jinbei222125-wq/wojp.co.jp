@@ -40,6 +40,7 @@ export const news = sqliteTable("news", {
   content: text("content").notNull(), // Markdown content
   excerpt: text("excerpt"), // 記事の概要
   thumbnailUrl: text("thumbnailUrl"), // サムネイル画像URL
+  category: text("category").default("お知らせ"), // カテゴリ
   authorId: integer("authorId"), // 投稿者ID
   isPublished: integer("isPublished", { mode: "boolean" }).notNull().default(false), // false = draft, true = published
   publishedAt: integer("publishedAt", { mode: "timestamp" }),
