@@ -26,6 +26,22 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
 /**
+ * NEWSカテゴリマスターテーブル（wojp-adminと共有DBを参照）
+ */
+export const newsCategories = sqliteTable("news_categories", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull().unique(),
+  slug: text("slug").notNull().unique(),
+  color: text("color").notNull().default("#6B7280"),
+  sortOrder: integer("sortOrder").notNull().default(0),
+  createdAt: integer("createdAt", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export type NewsCategory = typeof newsCategories.$inferSelect;
+export type InsertNewsCategory = typeof newsCategories.$inferInsert;
+
+/**
  * NEWS table for company announcements
  * - slug: URL-friendly identifier for public access
  * - isPublished: Controls visibility on the public site

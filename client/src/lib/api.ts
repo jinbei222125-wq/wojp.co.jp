@@ -41,6 +41,14 @@ export interface NewsItem {
 
 export type PublicNewsItem = NewsPublicItem;
 
+export interface NewsCategoryPublicItem {
+  id: number;
+  name: string;
+  slug: string;
+  color: string;
+  sortOrder: number;
+}
+
 export interface NewsPublicItem {
   id: number;
   title: string;
@@ -175,6 +183,9 @@ export const publicApi = {
 
   getNewsDetail: async (idOrSlug: string | number): Promise<NewsPublicItem & { body: string }> => {
     return apiCall(`/api/public/news/${idOrSlug}`);
+  },
+  getCategories: async (): Promise<NewsCategoryPublicItem[]> => {
+    return apiCall('/api/public/categories');
   },
 
   getJobs: async (params?: {

@@ -1,6 +1,6 @@
 import express, { Request, Response, NextFunction } from "express";
 import { eq, and, or, desc, sql } from "drizzle-orm";
-import { news, jobPositions, jobs, admins, adminUsers } from "../drizzle/schema";
+import { news, jobPositions, jobs, admins, adminUsers, newsCategories } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { SignJWT, jwtVerify } from "jose";
 import { getDb } from "./lib/db";
@@ -216,6 +216,28 @@ export function setupRestApi(app: express.Application) {
   // ============================================
   // Public API (No authentication required)
   // ============================================
+
+  // カテゴリ一覧取得（公開API）
+  app.get("/api/public/categories", async (req: Request, res: Response) => {
+    try {
+      const db = await getDb();
+      if (!db) {
+        return res.status(500).json({ detail: "データベース接続エラー" });
+      }
+      const cats = await db.select().from(newsCategories)
+        .orderBy(newsCategories.sortOrder, newsCategories.name);
+      return res.json(cats.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        color: c.color ?? "#6B7280",
+        sortOrder: c.sortOrder,
+      })));
+    } catch (error) {
+      console.error("[Public API] Get categories error:", error);
+      return res.status(500).json({ detail: "カテゴリの取得に失敗しました" });
+    }
+  });
 
   app.get("/api/public/news", async (req: Request, res: Response) => {
     try {
