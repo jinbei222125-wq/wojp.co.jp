@@ -901,7 +901,7 @@ function setupRestApi(app2) {
         title: item.title,
         slug: item.slug,
         eyecatch_image_url: item.thumbnailUrl || null,
-        category: null,
+        category: item.category || "\u304A\u77E5\u3089\u305B",
         published_at: item.publishedAt ? item.publishedAt.toISOString() : null,
         excerpt: item.excerpt || item.content?.substring(0, 200) || void 0
       }));
@@ -944,7 +944,7 @@ function setupRestApi(app2) {
         slug: newsItem.slug,
         body: newsItem.content,
         eyecatch_image_url: newsItem.thumbnailUrl || null,
-        category: null,
+        category: newsItem.category || "\u304A\u77E5\u3089\u305B",
         published_at: newsItem.publishedAt ? newsItem.publishedAt.toISOString() : null,
         excerpt: newsItem.excerpt || newsItem.content?.substring(0, 200) || void 0
       });

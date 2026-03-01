@@ -226,7 +226,6 @@ export function setupRestApi(app: express.Application) {
 
       const limit = parseInt(req.query.limit as string) || 100;
       const page = parseInt(req.query.page as string) || 1;
-      // NOTE: DB does not have a category column; category filter is not supported
       const allNews = await db.select().from(news)
         .where(eq(news.isPublished, true))
         .orderBy(desc(news.publishedAt));
@@ -241,7 +240,7 @@ export function setupRestApi(app: express.Application) {
         title: item.title,
         slug: item.slug,
         eyecatch_image_url: item.thumbnailUrl || null,
-        category: null,
+        category: (item as any).category || "お知らせ",
         published_at: item.publishedAt ? item.publishedAt.toISOString() : null,
         excerpt: item.excerpt || item.content?.substring(0, 200) || undefined,
       }));
@@ -294,7 +293,7 @@ export function setupRestApi(app: express.Application) {
         slug: newsItem.slug,
         body: newsItem.content,
         eyecatch_image_url: newsItem.thumbnailUrl || null,
-        category: null,
+        category: (newsItem as any).category || "お知らせ",
         published_at: newsItem.publishedAt ? newsItem.publishedAt.toISOString() : null,
         excerpt: newsItem.excerpt || newsItem.content?.substring(0, 200) || undefined,
       });
