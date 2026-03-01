@@ -4,15 +4,15 @@
  * wojp_admin の Tiptap エディタが出力するコンテンツを正しくレンダリングします。
  *
  * 対応パターン:
- *   1. 通常の HTML（Tiptap が正しく出力した場合）→ dangerouslySetInnerHTML
- *   2. <pre><code>...</code></pre> 内に Markdown が入っている場合
- *      → Markdown を抽出して react-markdown でレンダリング
- *   3. プレーンな Markdown テキスト → react-markdown でレンダリング
+ *   1. 正常な HTML（Tiptap が正しく出力した場合）→ dangerouslySetInnerHTML
+ *   2. <pre><code>Markdown</code></pre> のみ → Markdown として react-markdown でレンダリング
+ *   3. <p># 見出し</p> や <p>**太字**</p> のように <p> 内に Markdown 記法が混在
+ *      → HTML タグを除去して Markdown として react-markdown でレンダリング
+ *   4. プレーンな Markdown テキスト → react-markdown でレンダリング
  */
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
 import DOMPurify from "dompurify";
 
 interface RichContentProps {
@@ -26,18 +26,23 @@ interface RichContentProps {
  */
 function extractMarkdownFromPreCode(text: string): string | null {
   const trimmed = text.trim();
-  // <pre><code>...</code></pre> または <pre><code class="...">...</code></pre> のパターン
   const match = trimmed.match(/^<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>(<p><\/p>)?$/i);
   if (match) {
-    // HTML エンティティをデコード
-    return match[1]
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'");
+    return decodeHtmlEntities(match[1]);
   }
   return null;
+}
+
+/**
+ * HTML エンティティをデコード
+ */
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
 }
 
 /**
@@ -49,23 +54,67 @@ function isHtml(text: string): boolean {
 }
 
 /**
- * HTML 内に <pre><code> ブロックが含まれており、
- * その中身が Markdown 記法かどうかを判定
+ * HTML の <p> タグ内に Markdown 記法が含まれているか判定
+ * 例: <p># 見出し</p>, <p>**太字**</p>, <p>---</p>
  */
-function hasMarkdownInPreCode(text: string): boolean {
-  const preCodeMatch = text.match(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi);
-  if (!preCodeMatch) return false;
-  // 中身に Markdown 記法（#, *, -, >, ``` など）が含まれているか
-  return preCodeMatch.some((block) => {
-    const inner = block.replace(/<[^>]+>/g, "");
-    return /^#{1,6}\s|^\*\s|^-\s|^\d+\.\s|^>\s|```/m.test(inner);
+function hasMarkdownInParagraphs(text: string): boolean {
+  // <p> タグの内容を抽出
+  const pContents = text.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) || [];
+  const markdownPatterns = [
+    /^#{1,6}\s/,          // 見出し: # ## ###
+    /^\*\*[\s\S]+\*\*/,   // 太字: **text**
+    /^---+$/,             // 水平線: ---
+    /^\* /,               // 箇条書き: * item
+    /^- /,                // 箇条書き: - item
+    /^\d+\. /,            // 番号付きリスト: 1. item
+    /^> /,                // 引用: > text
+    /^## /,               // 見出し2
+  ];
+
+  return pContents.some((pTag) => {
+    // <p> タグ内のテキストを取得（HTMLタグを除去）
+    const inner = pTag.replace(/<[^>]+>/g, "").trim();
+    return markdownPatterns.some((pattern) => pattern.test(inner));
   });
+}
+
+/**
+ * HTML から全タグを除去してプレーンテキスト（Markdown）を取得
+ * <p> → 改行2つ、<br> → 改行、<hr> → --- に変換
+ */
+function htmlToMarkdown(html: string): string {
+  let text = html;
+
+  // <pre><code>...</code></pre> ブロックは内容をそのまま保持
+  text = text.replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, (_match, inner) => {
+    return "\n\n```\n" + decodeHtmlEntities(inner) + "\n```\n\n";
+  });
+
+  // <hr> → ---
+  text = text.replace(/<hr[^>]*\/?>/gi, "\n\n---\n\n");
+
+  // </p> → 改行2つ
+  text = text.replace(/<\/p>/gi, "\n\n");
+
+  // <br> → 改行
+  text = text.replace(/<br[^>]*\/?>/gi, "\n");
+
+  // 残りの HTML タグを除去
+  text = text.replace(/<[^>]+>/g, "");
+
+  // HTML エンティティをデコード
+  text = decodeHtmlEntities(text);
+
+  // 連続する空行を最大2行に正規化
+  text = text.replace(/\n{3,}/g, "\n\n");
+
+  return text.trim();
 }
 
 export default function RichContent({ content, className }: RichContentProps) {
   if (!content) return null;
 
-  // パターン1: <pre><code>Markdown</code></pre> のみの場合
+  // パターン2: <pre><code>Markdown</code></pre> のみの場合
   const markdownFromPreCode = extractMarkdownFromPreCode(content);
   if (markdownFromPreCode !== null) {
     return (
@@ -77,33 +126,20 @@ export default function RichContent({ content, className }: RichContentProps) {
     );
   }
 
-  // パターン2: HTML の中に <pre><code>Markdown</code></pre> が混在している場合
-  if (isHtml(content) && hasMarkdownInPreCode(content)) {
-    // <pre><code>...</code></pre> ブロックを Markdown レンダリングに置き換える
-    const processed = content.replace(
-      /<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>(<p><\/p>)?/gi,
-      (_match, inner) => {
-        // HTML エンティティをデコードして Markdown テキストを取得
-        const markdown = inner
-          .replace(/&amp;/g, "&")
-          .replace(/&lt;/g, "<")
-          .replace(/&gt;/g, ">")
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'");
-        // Markdown を簡易的に HTML に変換（見出し、リスト、太字など）
-        return markdownToHtml(markdown);
-      }
-    );
-    const clean = DOMPurify.sanitize(processed, { USE_PROFILES: { html: true } });
+  // パターン3: HTML の <p> 内に Markdown 記法が混在している場合
+  if (isHtml(content) && hasMarkdownInParagraphs(content)) {
+    // HTML タグを除去して Markdown テキストとして取得
+    const markdown = htmlToMarkdown(content);
     return (
-      <div
-        className={className}
-        dangerouslySetInnerHTML={{ __html: clean }}
-      />
+      <div className={className}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {markdown}
+        </ReactMarkdown>
+      </div>
     );
   }
 
-  // パターン3: 通常の HTML（Tiptap 出力）
+  // パターン1: 正常な HTML（Tiptap 出力）
   if (isHtml(content)) {
     const clean = DOMPurify.sanitize(content, { USE_PROFILES: { html: true } });
     return (
@@ -122,70 +158,4 @@ export default function RichContent({ content, className }: RichContentProps) {
       </ReactMarkdown>
     </div>
   );
-}
-
-/**
- * 簡易 Markdown → HTML 変換
- * react-markdown を使わずにサーバーサイドでも動作する軽量変換
- */
-function markdownToHtml(markdown: string): string {
-  let html = markdown;
-
-  // コードブロック（```...```）
-  html = html.replace(/```[\w]*\n?([\s\S]*?)```/g, "<pre><code>$1</code></pre>");
-
-  // 見出し
-  html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
-  html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
-  html = html.replace(/^# (.+)$/gm, "<h1>$1</h1>");
-
-  // 水平線
-  html = html.replace(/^---+$/gm, "<hr>");
-
-  // 太字
-  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-
-  // 斜体
-  html = html.replace(/\*(.+?)\*/g, "<em>$1</em>");
-
-  // インラインコード
-  html = html.replace(/`(.+?)`/g, "<code>$1</code>");
-
-  // 箇条書きリスト（連続する * または - 行をまとめる）
-  html = html.replace(/((?:^[*-] .+\n?)+)/gm, (match) => {
-    const items = match
-      .trim()
-      .split("\n")
-      .map((line) => `<li>${line.replace(/^[*-] /, "")}</li>`)
-      .join("");
-    return `<ul>${items}</ul>`;
-  });
-
-  // 番号付きリスト
-  html = html.replace(/((?:^\d+\. .+\n?)+)/gm, (match) => {
-    const items = match
-      .trim()
-      .split("\n")
-      .map((line) => `<li>${line.replace(/^\d+\. /, "")}</li>`)
-      .join("");
-    return `<ol>${items}</ol>`;
-  });
-
-  // 引用
-  html = html.replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>");
-
-  // 段落（空行で区切られたテキスト）
-  html = html
-    .split(/\n\n+/)
-    .map((block) => {
-      const trimmed = block.trim();
-      if (!trimmed) return "";
-      // すでにブロック要素で囲まれている場合はそのまま
-      if (/^<(h[1-6]|ul|ol|li|blockquote|pre|hr)/.test(trimmed)) return trimmed;
-      // 改行を <br> に変換して <p> で囲む
-      return `<p>${trimmed.replace(/\n/g, "<br>")}</p>`;
-    })
-    .join("\n");
-
-  return html;
 }
