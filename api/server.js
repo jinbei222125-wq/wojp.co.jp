@@ -209,7 +209,8 @@ async function upsertUser(user) {
     if (Object.keys(updateSet).length === 0) {
       updateSet.lastSignedIn = /* @__PURE__ */ new Date();
     }
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet
     });
   } catch (error) {
@@ -229,18 +230,18 @@ async function getUserByOpenId(openId) {
 async function getPublishedNews() {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(news).where(eq(news.isPublished, 1)).orderBy(desc(news.publishedAt));
+  return await db.select().from(news).where(eq(news.isPublished, true)).orderBy(desc(news.publishedAt));
 }
 async function getNewsBySlug(slug) {
   const db = await getDb();
   if (!db) return void 0;
-  const result = await db.select().from(news).where(and(eq(news.slug, slug), eq(news.isPublished, 1))).limit(1);
+  const result = await db.select().from(news).where(and(eq(news.slug, slug), eq(news.isPublished, true))).limit(1);
   return result.length > 0 ? result[0] : void 0;
 }
 async function getActiveJobPositions() {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(jobPositions).where(and(eq(jobPositions.isPublished, 1), eq(jobPositions.isActive, 1))).orderBy(desc(jobPositions.createdAt));
+  return await db.select().from(jobPositions).where(and(eq(jobPositions.isPublished, true), eq(jobPositions.isActive, true))).orderBy(desc(jobPositions.createdAt));
 }
 
 // server/_core/cookies.ts
