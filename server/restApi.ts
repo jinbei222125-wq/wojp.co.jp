@@ -449,7 +449,7 @@ export function setupRestApi(app: express.Application) {
       const resend = new Resend(apiKey);
 
       const { error } = await resend.emails.send({
-        from: "W.O.JP お問い合わせ <onboarding@resend.dev>",
+        from: "W.O.JP お問い合わせ <no-reply@wojp.co.jp>",
         to: [CONTACT_TO],
         replyTo: email,
         subject: `【W.O.JPお問い合わせ】${name}様より`,
