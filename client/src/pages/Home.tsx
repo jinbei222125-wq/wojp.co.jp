@@ -200,7 +200,7 @@ function HeroSection() {
                 >
                   <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="text-gray-400 text-xl md:text-2xl leading-relaxed">私たちは、</span>
-                    <div className="relative h-12 w-36 md:w-44 inline-flex items-center overflow-hidden">
+                    <div className="relative h-12 inline-flex items-center overflow-hidden" style={{ minWidth: '6rem' }}>
                       <AnimatePresence mode="wait">
                         <motion.span
                           key={currentWord}
@@ -208,7 +208,7 @@ function HeroSection() {
                           animate={{ y: 0, opacity: 1 }}
                           exit={{ y: -40, opacity: 0 }}
                           transition={{ duration: 0.4 }}
-                          className="absolute font-display text-3xl md:text-4xl font-bold text-brass"
+                          className="font-display text-3xl md:text-4xl font-bold text-brass whitespace-nowrap"
                         >
                           {words[currentWord]}
                         </motion.span>
@@ -579,7 +579,7 @@ function NewsProfileSection() {
                         {item.publishedAt ? formatDate(new Date(item.publishedAt)) : "-"}
                       </span>
                       <span className="text-brass text-xs font-display tracking-wider px-2 py-1 bg-brass/10 text-center">
-                        {item.category}
+                        {(item as any).category ?? "NEWS"}
                       </span>
                       <span className="text-foreground text-sm line-clamp-1">{item.title}</span>
                     </div>

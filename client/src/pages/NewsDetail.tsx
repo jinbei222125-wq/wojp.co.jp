@@ -6,7 +6,7 @@
 import { useParams, Link } from "wouter";
 import { motion } from "framer-motion";
 import { Calendar, Tag, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
-import { Streamdown } from "streamdown";
+import RichContent from "@/components/RichContent";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { publicApi, NewsPublicItem } from "@/lib/api";
@@ -135,6 +135,13 @@ export default function NewsDetail() {
               <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight">
                 {news.title}
               </h1>
+
+              {/* 抜粋 */}
+              {news.excerpt && (
+                <p className="mt-6 text-lg text-gray-300 leading-relaxed max-w-3xl border-l-4 border-brass/60 pl-5">
+                  {news.excerpt}
+                </p>
+              )}
             </motion.div>
           </div>
         </section>
@@ -182,7 +189,7 @@ export default function NewsDetail() {
                 prose-hr:border-border prose-hr:my-10
                 prose-a:text-brass prose-a:no-underline hover:prose-a:underline
               ">
-                <Streamdown>{news.body}</Streamdown>
+                <RichContent content={news.body} />
               </div>
             </motion.article>
           </div>
