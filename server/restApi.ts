@@ -4,6 +4,9 @@ import { news, jobPositions, jobs, admins, adminUsers } from "../drizzle/schema"
 import { ENV } from "./_core/env";
 import { SignJWT, jwtVerify } from "jose";
 import { getDb } from "./lib/db";
+import { Resend } from "resend";
+
+const CONTACT_TO = "m-otani@wojp.co.jp";
 
 // Dynamic import for bcryptjs (may not be installed)
 async function getBcrypt() {
@@ -127,6 +130,14 @@ async function getAdminByEmail(email: string) {
   }
 
   return null;
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 export function setupRestApi(app: express.Application) {
@@ -404,6 +415,56 @@ export function setupRestApi(app: express.Application) {
   });
 
   // ============================================
+  // ============================================
+  // Contact API
+  // ============================================
+
+  app.post("/api/contact", async (req: Request, res: Response) => {
+    try {
+      const { name, company, email, phone, inquiryType, message } = req.body;
+
+      if (!name || !email || !message) {
+        return res.status(400).json({ error: "必須項目が不足しています" });
+      }
+
+      const apiKey = ENV.resendApiKey;
+      if (!apiKey) {
+        console.error("[Contact] RESEND_API_KEY が設定されていません");
+        return res.status(500).json({ error: "メール送信の設定が不完全です" });
+      }
+
+      const resend = new Resend(apiKey);
+
+      const { error } = await resend.emails.send({
+        from: "W.O.JP お問い合わせ <onboarding@resend.dev>",
+        to: [CONTACT_TO],
+        replyTo: email,
+        subject: `【W.O.JPお問い合わせ】${name}様より`,
+        html: `
+          <h2>W.O.JP コーポレートサイト お問い合わせ</h2>
+          <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;">
+            <tr><th>お名前</th><td>${escapeHtml(name)}</td></tr>
+            <tr><th>会社名</th><td>${escapeHtml(company || "—")}</td></tr>
+            <tr><th>メールアドレス</th><td>${escapeHtml(email)}</td></tr>
+            <tr><th>電話番号</th><td>${escapeHtml(phone || "—")}</td></tr>
+            <tr><th>お問い合わせ種別</th><td>${escapeHtml(inquiryType || "—")}</td></tr>
+            <tr><th>内容</th><td style="white-space:pre-wrap;">${escapeHtml(message)}</td></tr>
+          </table>
+        `,
+      });
+
+      if (error) {
+        console.error("[Contact] Resend エラー:", error);
+        return res.status(500).json({ error: "メール送信に失敗しました" });
+      }
+
+      return res.json({ success: true });
+    } catch (err) {
+      console.error("[Contact] 予期しないエラー:", err);
+      return res.status(500).json({ error: "サーバーエラーが発生しました" });
+    }
+  });
+
   // Admin API (Authentication required)
   // ============================================
 

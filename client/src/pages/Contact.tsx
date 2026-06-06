@@ -130,12 +130,31 @@ function ContactForm({ onSuccess }: { onSuccess: () => void }) {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // フォーム送信シミュレーション
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone || undefined,
+          inquiryType: inquiryTypes.find((t) => t.value === formData.type)?.label,
+          message: formData.message,
+        }),
+      });
 
-    toast.success("お問い合わせを受け付けました");
-    setIsSubmitting(false);
-    onSuccess();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "送信に失敗しました");
+      }
+
+      toast.success("お問い合わせを受け付けました");
+      onSuccess();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "送信に失敗しました。時間をおいて再度お試しください。");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (
