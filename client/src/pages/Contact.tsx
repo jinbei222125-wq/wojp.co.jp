@@ -273,7 +273,7 @@ function ContactForm({ onSuccess }: { onSuccess: () => void }) {
                     required
                     value={formData.message}
                     onChange={handleChange}
-                    placeholder="お問い合わせ内容をご記入ください"
+                    placeholder=""
                     rows={6}
                     className="bg-background resize-none"
                   />
